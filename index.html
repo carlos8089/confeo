@@ -6,24 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC</title>
 
-    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="css/bootstrap.css" type="text/css">
+    <style>
+        body {
+            padding-top: 5rem;
+        }
+    </style>
 </head>
 
 <body>
+    <div class="navbar navbar-fixed-top navbar-dark">
+        <div class="navbar-brand">WEBRTC</div>
+    </div>
     <div class="container">
-        <div class="navbar">WEBRTC</div>
+
         <div id="main">
-            <video id="gum-local" autoplay playsinline controls></video>
-            <button id="showVideo">Ouvrir la caméra</button>
+            <video id="leftVideo" controls></video>
+            <div>
+                <button id="start" class="btn btn-primary">Démarrer le stream</button>
+            </div>
 
             <div id="errorMsg"></div>
-            <p class="war"><strike>Attentio : </strike>Si vous n'avez pas d'écouteurs, cela déclendhera un bruit sourd</p>
-
+            <p class="war"><strong>Attention : </strong>Si vous n'avez pas d'écouteurs, cela déclendhera un bruit sourd</p>
+            <video id="rightVideo" controls></video>
         </div>
     </div>
 
     <!-- appels de script -->
-    <script src="js/adapter.js"></script>
+    <script src="js/adapter-latest.js"></script>
     <script src="js/main.js"></script>
 </body>
 
