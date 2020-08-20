@@ -27,7 +27,7 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
     //app.use(express.static('../'));
     app.get('/', function(req, res) {
         //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-        res.sendFile('../index.html')
+        res.sendFile(__dirname + '/index.html')
 
     })
 
