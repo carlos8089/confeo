@@ -6,6 +6,8 @@
  *  tree.
  */
 
+const socket = io.connect("localhost:5000");
+
 'use strict';
 
 const leftVideo = document.getElementById('leftVideo');
