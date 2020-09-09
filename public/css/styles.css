@@ -8,10 +8,22 @@ body {
     color: #595354;
 }
 
+
+/*
+#users-zone {
+    background-color: rgb(6, 155, 155);
+}
+
+#chat-zone {
+    background-color: aqua;
+}
+*/
+
 .header {
     background-color: #ffffff;
-    padding: 1px;
+    padding-left: 10px;
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+    height: 5%;
 }
 
 .header>.logo-container {
@@ -25,36 +37,38 @@ body {
     margin-right: 50px;
 }
 
-.header>.logo-container>.logo-text {
-    font-size: 40px;
+.header>.logo-container>a>.logo-text {
+    font-size: 2em;
     font-weight: 1000;
+    color: rgb(54, 54, 54);
 }
 
-.header>.logo-container>.logo-text>.logo-highlight {
+.header>.logo-container>a>.logo-text>.logo-highlight {
     color: #65a9e5;
 }
 
 .content-container {
     width: 100%;
-    height: 500px;
+    height: 95%;
+    /* 
     display: flex;
     justify-content: space-between;
-    /* 
     overflow: hidden
     ;*/
 }
 
 .active-users-panel {
-    width: 220px;
+    /*
+     width: 100%;
     height: 100%;
+    
+    */
     border-right: 1px solid #cddfe7;
 }
 
 .panel-titre {
     margin: 10px 0 0 0;
     padding-left: 30px;
-    font-weight: 500;
-    font-size: 18px;
     border-bottom: 1px solid #cddfe7;
     padding-bottom: 10px;
 }
@@ -81,20 +95,18 @@ body {
 .video-chat-container {
     padding: 0 20px;
     position: relative;
-    /*
-flex: 1;
-    */
+    flex: 1;
 }
 
 .talk-info {
     font-weight: 500;
-    font-size: 21px;
+    font-size: 1em;
 }
 
 .remote-video {
     border: 1px solid #cddfe7;
     width: 100%;
-    height: 320px;
+    height: 70%;
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.2);
     /*
 height: 100%;

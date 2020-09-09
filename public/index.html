@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!--
+    <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -29,9 +30,100 @@
         </div>
     </div>
 
-    <!-- appels de script -->
     <script src="adapter-latest.js"></script>
     <script src="./socket.io/socket.io.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Confeo</title>
+    <!--
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700&display=swap" rel="stylesheet" />
+    -->
+
+    <link rel="stylesheet" href="styles.css" type="text/css">
+    <link rel="stylesheet" href="bootstrap.css">
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script> -->
+
+    <style>
+        * {
+            margin: 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="logo-container">
+            <a href="https://localhost:5000">
+                <h4 class="logo-text">
+                    Conf<span class="logo-highlight">éo</span>
+                </h4>
+            </a>
+        </div>
+    </header>
+    <div class="">
+        <div class="row">
+            <div class="col-md-2" id="users-zone">
+                <div class="active-users-panel" id="active-user-container">
+                    <div class="panel-titre">
+                        <h4>Utilisateurs actifs</h4>(Cliquez pour appeler)
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-10" id="chat-zone">
+                <div class="">
+                    <div class="video-chat-container">
+                        <div class=" row" id="navigateur">
+                            <div class="col-md-10">
+                                <h4 class="talk-info" id="talking-with-info">
+                                    Sélectionner l'utilisateur que vous souhaiter appeler dans le menu à gauche.
+                                </h4>
+                            </div>
+                            <div class="col-md-2" id="callButton-zone">
+
+                            </div>
+                        </div>
+
+                        <div class="video-container">
+                            <video autoplay class="remote-video" id="remote-video"></video>
+                            <video autoplay muted class="local-video" id="local-video"></video>
+                        </div>
+                        <div class="text-chat-container">
+                            <div class="receive-message"></div>
+                            <div class="row">
+                                <div class="col-md-10">
+                                    <input type="text" placeholder="Votre message..." class="form-control send-message" id="msg">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type=" button " class="btn btn-success send-button" id="msgButton">Envoyer</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="adapter-latest.js"></script>
+    <script src="./socket.io/socket.io.js"></script>
+    <!--
+        
+    -->
     <script src="main.js"></script>
 </body>
 

@@ -1,0 +1,567 @@
+const { RTCPeerConnection, RTCSessionDescription } = window;
+let isAlreadyCalling = false;
+let getCalled = false;
+let localStream;
+
+const existingCalls = [];
+const offerOptions = {
+    offerToReceiveAudio: 1,
+    offerToReceiveVideo: 1
+};
+const constraints = window.constraints = {
+    audio: true,
+    video: true
+};
+
+let startTime;
+let pc1;
+let pc2;
+
+const localVideo = document.getElementById('local-video');
+const remoteVideo = document.getElementById('remote-video');
+
+localVideo.addEventListener('loadedmetadata', function() {
+    console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
+});
+
+remoteVideo.addEventListener('loadedmetadata', function() {
+    console.log(`Remote video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
+});
+
+remoteVideo.addEventListener('resize', () => {
+    console.log(`Remote video size changed to ${remoteVideo.videoWidth}x${remoteVideo.videoHeight}`);
+    // We'll use the first onsize callback as an indication that video has started
+    // playing out.
+    if (startTime) {
+        const elapsedTime = window.performance.now() - startTime;
+        console.log('Setup time: ' + elapsedTime.toFixed(3) + 'ms');
+        startTime = null;
+    }
+});
+
+const configuration = { 'iceServers': [] };
+
+function unselectUsersFromList() {
+    const alreadySelectedUser = document.querySelectorAll(
+        ".active-user.active-user--selected"
+    );
+
+    alreadySelectedUser.forEach(el => {
+        el.setAttribute("class", "active-user");
+    });
+}
+
+function updateUserList(socketIds) {
+    const activeUserContainer = document.getElementById("active-user-container");
+
+    socketIds.forEach(socketId => {
+        const alreadyExistingUser = document.getElementById(socketId);
+        if (!alreadyExistingUser) {
+            const userContainerEl = createUserItemContainer(socketId);
+            activeUserContainer.appendChild(userContainerEl);
+        }
+    });
+}
+
+function createUserItemContainer(socketId) {
+    const userContainerEl = document.createElement("div");
+
+    const usernameEl = document.createElement("p");
+
+    userContainerEl.setAttribute("class", "active-user");
+    userContainerEl.setAttribute("id", socketId);
+    usernameEl.setAttribute("class", "username");
+    usernameEl.innerHTML = `${socketId}`;
+
+    userContainerEl.appendChild(usernameEl);
+
+    userContainerEl.addEventListener("click", () => {
+        unselectUsersFromList();
+        userContainerEl.setAttribute("class", "active-user active-user--selected");
+        const talkingWithInfo = document.getElementById("talking-with-info");
+        talkingWithInfo.innerHTML = `Appel en cours avec "Socket: ${socketId}"`;
+        callUser(socketId);
+    });
+    return userContainerEl;
+}
+
+async function callUser(socketId) {
+    try {
+        const Mstream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('Stream local reçu');
+        localVideo.srcObject = Mstream;
+        localStream = Mstream;
+        localVideo.play();
+    } catch (err) {
+        handleError(err);
+    }
+    console.log('Starting call');
+    startTime = window.performance.now();
+    const videoTracks = localStream.getVideoTracks();
+    const audioTracks = localStream.getAudioTracks();
+    if (videoTracks.length > 0) {
+        console.log(`Using video device: ${videoTracks[0].label}`);
+    }
+    if (audioTracks.length > 0) {
+        console.log(`Using audio device: ${audioTracks[0].label}`);
+    }
+
+    pc1 = new RTCPeerConnection(configuration);
+    console.log('Created local peer connection object pc1');
+    //pc1.onicecandidate = e => onIceCandidate(pc1, e);
+    pc1.addEventListener('icecandidate', e => onIceCandidate(pc1, e));
+    //pc1.oniceconnectionstatechange = e => onIceStateChange(pc1, e)
+    pc1.addEventListener('iceconnectionstatechange', e => onIceStateChange(pc1, e));
+    localStream.getTracks().forEach(track => pc1.addTrack(track, localStream));
+    console.log('Added local stream to pc1');
+    try {
+        console.log('pc1 createOffer start');
+        const offer = await pc1.createOffer(offerOptions);
+        await onCreateOfferSuccess(offer);
+        socket.emit("call-user", {
+            offer,
+            to: socketId
+        });
+    } catch (error) {
+        onCreateSessionDescriptionError(error);
+    }
+}
+
+function onCreateSessionDescriptionError(error) {
+    console.log(`Failed to create session description: ${error.toString()}`);
+}
+
+async function onCreateOfferSuccess(desc) {
+    console.log(`Offer from pc1\n${desc.sdp}`);
+    console.log('pc1 setLocalDescription start');
+    try {
+        await pc1.setLocalDescription(desc);
+        onSetLocalSuccess(pc1);
+    } catch (e) {
+        onSetSessionDescriptionError(e);
+    }
+}
+
+function onSetLocalSuccess(pc) {
+    console.log(`${getName(pc)} setLocalDescription complete`);
+}
+
+function onSetRemoteSuccess(pc) {
+    console.log(`${getName(pc)} setRemoteDescription complete`);
+}
+
+function onSetSessionDescriptionError(error) {
+    console.log(`Failed to set session description: ${error.toString()}`);
+}
+
+function gotRemoteStream(event) {
+    if (remoteVideo.srcObject !== event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+        console.log('pc2 received remote stream', event);
+    }
+}
+
+async function onCreateAnswerSuccess(desc) {
+    console.log(`Answer from pc2:\n${desc.sdp}`);
+    console.log('pc2 setLocalDescription start');
+    try {
+        await pc2.setLocalDescription(desc);
+        onSetLocalSuccess(pc2);
+    } catch (e) {
+        onSetSessionDescriptionError(e);
+    }
+}
+
+async function onIceCandidate(pc, event) {
+    try {
+        await (getOtherPc(pc).addIceCandidate(event.candidate));
+        onAddIceCandidateSuccess(pc);
+    } catch (e) {
+        onAddIceCandidateError(pc, e);
+    }
+    console.log(`${getName(pc)} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+}
+
+function onAddIceCandidateSuccess(pc) {
+    console.log(`${getName(pc)} addIceCandidate success`);
+}
+
+function onAddIceCandidateError(pc, error) {
+    console.log(`${getName(pc)} failed to add ICE Candidate: ${error.toString()}`);
+}
+
+function onIceStateChange(pc, event) {
+    if (pc) {
+        console.log(`${getName(pc)} ICE state: ${pc.iceConnectionState}`);
+        console.log('ICE state change event: ', event);
+    }
+}
+
+
+function getName(pc) {
+    return (pc === pc1) ? 'pc1' : 'pc2';
+}
+
+function getOtherPc(pc) {
+    return (pc === pc2) ? answer : offer;
+}
+
+const socket = io();
+
+socket.on("update-user-list", ({ users }) => {
+    updateUserList(users);
+});
+
+socket.on("remove-user", ({ socketId }) => {
+    const elToRemove = document.getElementById(socketId);
+
+    if (elToRemove) {
+        elToRemove.remove();
+    }
+});
+
+socket.on("call-made", async data => {
+
+    if (getCalled) {
+        const confirmed = confirm(
+            `User "Socket: ${data.socket}" wants to call you. Do accept this call?`
+        );
+
+        if (!confirmed) {
+            socket.emit("reject-call", {
+                from: data.socket
+            });
+
+            return;
+        }
+    }
+
+    pc2 = new RTCPeerConnection(configuration);
+    console.log('Created remote peer connection object pc2');
+    //pc2.onicecandidate = e => onIceCandidate(pc2, e);
+    pc2.addEventListener('icecandidate', e => onIceCandidate(pc2, e));
+    //pc2.oniceconnectionstatechange = e => onIceStateChange(pc2, e);
+    pc2.addEventListener('iceconnectionstatechange', e => onIceStateChange(pc2, e));
+    //pc2.ontrack = gotRemoteStream;
+    pc2.addEventListener('track', gotRemoteStream);
+
+    console.log('pc2 setRemoteDescription start');
+    try {
+        await pc2.setRemoteDescription(data.offer);
+        onSetRemoteSuccess(pc2)
+    } catch (error) {
+        onSetSessionDescriptionError(error);
+    }
+
+    console.log('pc2 createAnswer start');
+    // Since the 'remote' side has no media stream we need
+    // to pass in the right constraints in order for it to
+    // accept the incoming offer of audio and video.
+    try {
+        const answer = await pc2.createAnswer();
+        await onCreateAnswerSuccess(answer);
+
+        socket.emit("make-answer", {
+            answer,
+            to: data.socket
+        });
+    } catch (error) {
+        onCreateSessionDescriptionError(error);
+    }
+
+    getCalled = true;
+});
+
+socket.on("answer-made", async data => {
+    console.log('pc1 setRemoteDescription start');
+    try {
+        await pc1.setRemoteDescription(data.answer);
+        onSetRemoteSuccess(pc1);
+
+    } catch (e) {
+        onSetSessionDescriptionError(e);
+    }
+
+});
+
+function handleError(error) {
+    if (error.name === 'ConstraintNotSatisfiedError') {
+        const v = constraints.video;
+        errorMsg(`The resolution ${v.width.exact}x${v.height.exact} px is not supported by your device.`);
+    } else if (error.name === 'PermissionDeniedError') {
+        errorMsg('Permissions have not been granted to use your camera and ' +
+            'microphone, vous devez autorisez la page à acceder à votre matériel');
+    }
+    errorMsg(`getUserMedia error: ${error.name}`, error);
+}
+
+function errorMsg(msg, error) {
+    if (typeof error !== 'undefined') {
+        console.error(error);
+    }
+    console.log(msg + error);
+}
+
+async function init(e) {
+    try {
+        const Mstream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('Stream local reçu');
+        localVideo.srcObject = Mstream;
+        localStream = Mstream;
+        localVideo.play();
+    } catch (err) {
+        handleError(err);
+    }
+}
+
+function hangup() {
+    console.log('Ending call');
+    pc1.close();
+    pc2.close();
+    pc1 = null;
+    pc2 = null;
+    hangupButton.disabled = true;
+    callButton.disabled = false;
+}
+
+//document.querySelector('#start').addEventListener('click', e => init(e));
+/*
+navigator.mediaDevices.getUserMedia({ video: true, audio: true },
+    stream => {
+        const localVideo = document.getElementById("local-video");
+        if (localVideo) {
+            localVideo.srcObject = stream;
+        }
+    },
+    error => {
+        console.warn(error.message);
+    }
+);
+*/
+
+// ancien code
+
+/*
+const socket = io.connect("localhost:5000");
+
+'use strict';
+
+const leftVideo = document.getElementById('leftVideo');
+const rightVideo = document.getElementById('rightVideo');
+
+let stream;
+
+let peerConnection;
+let peerConnection;
+const offerOptions = {
+    offerToReceiveAudio: 1,
+    offerToReceiveVideo: 1
+};
+//contraintes de streaming getUserMedia
+const constraints = window.constraints = {
+    audio: false,
+    video: true
+};
+
+let startTime;
+
+function maybeCreateStream() {
+    if (stream) {
+        return;
+    }
+    if (leftVideo.captureStream) {
+        stream = leftVideo.captureStream();
+        console.log('Captured stream from leftVideo with captureStream',
+            stream);
+        call();
+    } else if (leftVideo.mozCaptureStream) {
+        stream = leftVideo.mozCaptureStream();
+        console.log('Captured stream from leftVideo with mozCaptureStream()',
+            stream);
+        call();
+    } else {
+        console.log('captureStream() not supported');
+    }
+}
+
+function handleSuccess(Mstream) {
+    const leftVideo = document.querySelector('#leftVideo');
+    const videoTracks = Mstream.getVideoTracks();
+    console.log('Got stream with constraints:', constraints);
+    console.log(`Using video device: ${videoTracks[0].label}`);
+    window.leftVideo.stream = Mstream; // make variable available to browser console
+    leftVideo.srcObject = Mstream;
+    // leftVideo.play() n'est pas une fonction
+}
+
+function handleError(error) {
+    if (error.name === 'ConstraintNotSatisfiedError') {
+        const v = constraints.video;
+        errorMsg(`The resolution ${v.width.exact}x${v.height.exact} px is not supported by your device.`);
+    } else if (error.name === 'PermissionDeniedError') {
+        errorMsg('Permissions have not been granted to use your camera and ' +
+            'microphone, vous devez autorisez la page à acceder à votre matériel');
+    }
+    errorMsg(`getUserMedia error: ${error.name}`, error);
+}
+
+function errorMsg(msg, error) {
+    const errorElement = document.querySelector('#errorMsg');
+    errorElement.innerHTML += `<p>${msg}</p>`;
+    if (typeof error !== 'undefined') {
+        console.error(error);
+    }
+}
+
+async function init(e) {
+    try {
+        const Mstream = await navigator.mediaDevices.getUserMedia(constraints);
+        handleSuccess(Mstream);
+        //désactive le bouton
+        e.target.disabled = true;
+
+        //capture du stream pour envoi
+
+        // Video tag capture must be set up after video tracks are enumerated.
+        leftVideo.oncanplay = maybeCreateStream;
+        if (leftVideo.readyState >= 3) { // HAVE_FUTURE_DATA
+            // Video is already ready to play, call maybeCreateStream in case oncanplay
+            // fired before we registered the event handler.
+            maybeCreateStream();
+        }
+        leftVideo.play();
+
+        rightVideo.onloadedmetadata = () => {
+            console.log(`Remote video videoWidth: ${rightVideo.videoWidth}px,  videoHeight: ${rightVideo.videoHeight}px`);
+        };
+
+        rightVideo.onresize = () => {
+            console.log(`Remote video size changed to ${rightVideo.videoWidth}x${rightVideo.videoHeight}`);
+            // We'll use the first onresize callback as an indication that
+            // video has started playing out.
+            if (startTime) {
+                const elapsedTime = window.performance.now() - startTime;
+                console.log('Setup time: ' + elapsedTime.toFixed(3) + 'ms');
+                startTime = null;
+            }
+        };
+
+    } catch (e) {
+        handleError(e);
+    }
+}
+
+document.querySelector('#start').addEventListener('click', e => init(e));
+
+
+function call() {
+    console.log('Starting call');
+    startTime = window.performance.now();
+    const videoTracks = stream.getVideoTracks();
+    const audioTracks = stream.getAudioTracks();
+    if (videoTracks.length > 0) {
+        console.log(`Using video device: ${videoTracks[0].label}`);
+    }
+    if (audioTracks.length > 0) {
+        console.log(`Using audio device: ${audioTracks[0].label}`);
+    }
+    const servers = null;
+    peerConnection = new RTCPeerConnection(servers);
+    console.log('Created local peer connection object peerConnection');
+    peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+    peerConnection = new RTCPeerConnection(servers);
+    console.log('Created remote peer connection object peerConnection');
+    peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+    peerConnection.oniceconnectionstatechange = e => onIceStateChange(peerConnection, e);
+    peerConnection.oniceconnectionstatechange = e => onIceStateChange(peerConnection, e);
+    peerConnection.ontrack = gotRemoteStream;
+
+    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+    console.log('Added local stream to peerConnection');
+
+    console.log('peerConnection createOffer start');
+    peerConnection.createOffer(onCreateOfferSuccess, onCreateSessionDescriptionError, offerOptions);
+}
+
+function onCreateSessionDescriptionError(error) {
+    console.log(`Failed to create session description: ${error.toString()}`);
+}
+
+function onCreateOfferSuccess(desc) {
+    console.log(`Offer from peerConnection
+${desc.sdp}`);
+    console.log('peerConnection setLocalDescription start');
+    peerConnection.setLocalDescription(desc, () => onSetLocalSuccess(peerConnection), onSetSessionDescriptionError);
+    console.log('peerConnection setRemoteDescription start');
+    peerConnection.setRemoteDescription(desc, () => onSetRemoteSuccess(peerConnection), onSetSessionDescriptionError);
+    console.log('peerConnection createAnswer start');
+    // Since the 'remote' side has no media stream we need
+    // to pass in the right constraints in order for it to
+    // accept the incoming offer of audio and video.
+    peerConnection.createAnswer(onCreateAnswerSuccess, onCreateSessionDescriptionError);
+}
+
+function onSetLocalSuccess(pc) {
+    console.log(`${getName(pc)} setLocalDescription complete`);
+}
+
+function onSetRemoteSuccess(pc) {
+    console.log(`${getName(pc)} setRemoteDescription complete`);
+}
+
+function onSetSessionDescriptionError(error) {
+    console.log(`Failed to set session description: ${error.toString()}`);
+}
+
+function gotRemoteStream(event) {
+    if (rightVideo.srcObject !== event.streams[0]) {
+        rightVideo.srcObject = event.streams[0];
+        console.log('peerConnection received remote stream', event);
+    }
+}
+
+function onCreateAnswerSuccess(desc) {
+    console.log(`Answer from peerConnection:
+${desc.sdp}`);
+    console.log('peerConnection setLocalDescription start');
+    peerConnection.setLocalDescription(desc, () => onSetLocalSuccess(peerConnection), onSetSessionDescriptionError);
+    console.log('peerConnection setRemoteDescription start');
+    peerConnection.setRemoteDescription(desc, () => onSetRemoteSuccess(peerConnection), onSetSessionDescriptionError);
+}
+
+function onIceCandidate(pc, event) {
+    getOtherPc(pc).addIceCandidate(event.candidate)
+        .then(
+            () => onAddIceCandidateSuccess(pc),
+            err => onAddIceCandidateError(pc, err)
+        );
+    console.log(`${getName(pc)} ICE candidate: 
+${event.candidate ?
+    event.candidate.candidate : '(null)'}`);
+}
+
+function onAddIceCandidateSuccess(pc) {
+    console.log(`${getName(pc)} addIceCandidate success`);
+}
+
+function onAddIceCandidateError(pc, error) {
+    console.log(`${getName(pc)} failed to add ICE Candidate: ${error.toString()}`);
+}
+
+function onIceStateChange(pc, event) {
+    if (pc) {
+        console.log(`${getName(pc)} ICE state: ${pc.iceConnectionState}`);
+        console.log('ICE state change event: ', event);
+    }
+}
+
+function getName(pc) {
+    return (pc === peerConnection) ? 'peerConnection' : 'peerConnection';
+}
+
+function getOtherPc(pc) {
+    return (pc === peerConnection) ? peerConnection : peerConnection;
+}
+
+
+*/
