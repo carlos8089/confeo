@@ -1,15 +1,11 @@
 'use strict';
 
-//code initiaux
-
 const app = require('express')();
 const https = require('https');
 const pem = require('pem');
 const path = require('path');
 const express = require('express');
 let io;
-
-
 
 pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
     var options = {
@@ -58,7 +54,6 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
 
     function handleSocketConnection() {
         var activeSockets = [];
-
         io.on("connection", socket => {
             //console.log('new connected user :' + socket.id)
             const existingSocket = activeSockets.find(
@@ -79,27 +74,10 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
                 });
             }
 
-            socket.on("send-candidate", data => {
-                socket.to(data.to).emit("new-candidate", {
-                    candidate: data.candidate,
-                    socket: socket.id
-                });
+            socket.to(socket.id).emit("your-id", {
+                user: socket.id
             });
-
-            socket.on("make-offer", data => {
-                socket.to(data.to).emit("offer-made", {
-                    offer: data.offer,
-                    socket: socket.id
-                });
-            });
-
-            socket.on("make-answer", data => {
-                socket.to(data.to).emit("answer-made", {
-                    socket: socket.id,
-                    answer: data.answer
-                })
-            })
-
+            //general events handling
             socket.on("disconnect", () => {
                 activeSockets = activeSockets.filter(
                     existingSocket => existingSocket !== socket.id
@@ -108,48 +86,58 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
                     socketId: socket.id
                 });
             });
+            //diffusion events
+            socket.on("send-diffusion-candidate", data => {
+                socket.broadcast.emit("new-diffusion-candidate", { candidate: data.candidate });
+            });
+            socket.on("make-diffusion-offer", data => {
+                socket.broadcast.emit("diffusion-offer-made", {
+                    offer: data.offer,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-diffusion-answer", data => {
+                socket.to(data.to).emit("diffusion-answer-made", { answer: data.answer })
+            });
+            //call events
+            socket.on("send-candidate", data => {
+                socket.to(data.to).emit("new-candidate", {
+                    candidate: data.candidate,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-offer", data => {
+                socket.to(data.to).emit("offer-made", {
+                    offer: data.offer,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-answer", data => {
+                socket.to(data.to).emit("answer-made", {
+                    socket: socket.id,
+                    answer: data.answer
+                })
+            });
+            //data channel events
+            socket.on("send-dc-candidate", data => {
+                socket.to(data.to).emit("new-dc-candidate", {
+                    candidate: data.candidate,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-dc-offer", data => {
+                socket.to(data.to).emit("dc-offer-made", {
+                    offer: data.offer,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-dc-answer", data => {
+                socket.to(data.to).emit("dc-answer-made", {
+                    socket: socket.id,
+                    answer: data.answer
+                })
+            })
         });
     }
-
     console.log('serving on https://localhost:5000');
 });
-
-/*
-require('webrtc-adapter')
-const app = require('app')()
-const http = require('http').createServer(app)
-
-//routes
-
-//renvoi l'application
-
-app.get('/', function(req, res) {
-    //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-    res.sendFile(__dirname + '/index.html')
-
-})
-
-app.get('/css/bootstrap.css', function(req, res) {
-    //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-    res.sendFile(__dirname + '/css/bootstrap.css')
-
-})
-
-app.get('/js/main.js', function(req, res) {
-    //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-    res.sendFile(__dirname + '/js/main.js')
-
-})
-
-app.get('/js/adapter.js', function(req, res) {
-    //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-    res.sendFile(__dirname + '/js/adapter.js')
-
-})
-
-//lance le serveur web et écoute l'adresse
-http.listen(3000, function() {
-    console.log('Serveur tournant sur 3000')
-
-})
-*/

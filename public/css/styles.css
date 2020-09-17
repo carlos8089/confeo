@@ -139,6 +139,7 @@ height: 100%;
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.2);
     border-radius: 5px;
     font-size: 1.1em;
+    overflow: auto;
 }
 
 .send-message {
@@ -162,5 +163,20 @@ height: 100%;
     border-radius: 5px;
     bottom: 60px;
     right: 40px;
-    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.call {
+    width: 100%;
+    padding: 10px;
+    align-content: center;
+}
+
+.message-sender {
+    color: #65a9e5;
+    font-size: 0.5em;
+}
+
+.message-content {
+    font-size: 1.6em;
 }

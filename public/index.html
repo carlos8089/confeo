@@ -1,44 +1,3 @@
-<!--
-    <!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC</title>
-
-    <link rel="stylesheet" href="bootstrap.css" type="text/css">
-    <style>
-        body {
-            padding-top: 5rem;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-
-        <div id="main">
-            <video id="leftVideo" controls></video>
-            <div>
-                <button id="start" class="btn btn-primary">Démarrer le stream</button>
-            </div>
-
-            <div id="errorMsg"></div>
-            <p class="war"><strong>Attention : </strong>Si vous n'avez pas d'écouteurs, cela déclendhera un bruit sourd</p>
-            <video id="rightVideo" controls></video>
-        </div>
-    </div>
-
-    <script src="adapter-latest.js"></script>
-    <script src="./socket.io/socket.io.js"></script>
-    <script src="main.js"></script>
-</body>
-
-</html>
--->
-
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -47,14 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Confeo</title>
-    <!--
-        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700&display=swap" rel="stylesheet" />
-    -->
-
     <link rel="stylesheet" href="styles.css" type="text/css">
     <link rel="stylesheet" href="bootstrap.css">
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script> -->
-
     <style>
         * {
             margin: 0;
@@ -85,29 +38,40 @@
             <div class="col-md-10" id="chat-zone">
                 <div class="">
                     <div class="video-chat-container">
-                        <div class=" row" id="navigateur">
-                            <div class="col-md-10">
+                        <div class="row" id="navigateur">
+                            <div class="col-md-6">
                                 <h4 class="talk-info" id="talking-with-info">
                                     Sélectionner l'utilisateur que vous souhaiter appeler dans le menu à gauche.
                                 </h4>
                             </div>
-                            <div class="col-md-2" id="callButton-zone">
-
+                            <div class="col-md-6" id="action-zone" hidden>
+                                <div class="col-md-4">
+                                    <button id="start" class="btn btn-default">Start</button>
+                                </div>
+                                <div class="col-md-4">
+                                    <button id="callButton" class="btn btn-primary call">Appeler</button>
+                                </div>
+                                <div class="col-md-4">
+                                    <button id="screen-share" class="btn btn-warning">Streamer l'écran</button>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="video-container">
-                            <video autoplay class="remote-video" id="remote-video"></video>
-                            <video autoplay muted class="local-video" id="local-video"></video>
+                        <div id="diff">
+                            <button id="diffusion" class="btn btn-warning">Démarrer une diffusion</button>
                         </div>
-                        <div class="text-chat-container">
-                            <div class="receive-message"></div>
+                        <div class="video-container">
+                            <video autoplay class="remote-video" id="remote-video" hidden></video>
+                            <video autoplay muted class="local-video" id="local-video" hidden></video>
+                        </div>
+                        <div class="text-chat-container" id="msg-zone" hidden>
+                            <div class="receive-message" id="messages">
+                            </div>
                             <div class="row">
                                 <div class="col-md-10">
                                     <input type="text" placeholder="Votre message..." class="form-control send-message" id="msg">
                                 </div>
                                 <div class="col-md-2">
-                                    <button type=" button " class="btn btn-success send-button" id="msgButton">Envoyer</button>
+                                    <button type="button" class="btn btn-success send-button" id="msgButton" disabled>Envoyer</button>
                                 </div>
                             </div>
                         </div>
@@ -121,9 +85,6 @@
 
     <script src="adapter-latest.js"></script>
     <script src="./socket.io/socket.io.js"></script>
-    <!--
-        
-    -->
     <script src="main.js"></script>
 </body>
 
