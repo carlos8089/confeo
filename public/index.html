@@ -2,12 +2,11 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Confeo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css" type="text/css">
     <link rel="stylesheet" href="bootstrap.css">
+    <title>Confeo | Login</title>
     <style>
         * {
             margin: 0;
@@ -17,75 +16,32 @@
 </head>
 
 <body>
-    <header class="header">
-        <div class="logo-container">
-            <a href="https://localhost:5000">
-                <h4 class="logo-text">
-                    Conf<span class="logo-highlight">éo</span>
-                </h4>
-            </a>
+    <div class="card py-8">
+        <div class="card-header">
+            Bienvenue
         </div>
-    </header>
-    <div class="">
-        <div class="row">
-            <div class="col-md-2" id="users-zone">
-                <div class="active-users-panel" id="active-user-container">
-                    <div class="panel-titre">
-                        <h4>Utilisateurs actifs</h4>(Cliquez pour appeler)
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-10" id="chat-zone">
-                <div class="">
-                    <div class="video-chat-container">
-                        <div class="row" id="navigateur">
-                            <div class="col-md-6">
-                                <h4 class="talk-info" id="talking-with-info">
-                                    Sélectionner l'utilisateur que vous souhaiter appeler dans le menu à gauche.
-                                </h4>
-                            </div>
-                            <div class="col-md-6" id="action-zone" hidden>
-                                <div class="col-md-4">
-                                    <button id="start" class="btn btn-default">Start</button>
-                                </div>
-                                <div class="col-md-4">
-                                    <button id="callButton" class="btn btn-primary call">Appeler</button>
-                                </div>
-                                <div class="col-md-4">
-                                    <button id="screen-share" class="btn btn-warning">Streamer l'écran</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="diff">
-                            <button id="diffusion" class="btn btn-warning">Démarrer une diffusion</button>
-                        </div>
-                        <div class="video-container">
-                            <video autoplay class="remote-video" id="remote-video" hidden></video>
-                            <video autoplay muted class="local-video" id="local-video" hidden></video>
-                        </div>
-                        <div class="text-chat-container" id="msg-zone" hidden>
-                            <div class="receive-message" id="messages">
-                            </div>
-                            <div class="row">
-                                <div class="col-md-10">
-                                    <input type="text" placeholder="Votre message..." class="form-control send-message" id="msg">
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-success send-button" id="msgButton" disabled>Envoyer</button>
-                                </div>
-                            </div>
-                        </div>
+        <div class="card-body">
+            <h4 class="card-title">Veuillez vos informations de connexion</h4>
+            <p class="card-text">
 
-                    </div>
-
+                <div class="form-group">
+                    <label for="identifier">Identifiant</label>
+                    <input id="identifier" class="form-control" type="text" name="identifier" required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label for="mdp">Mot de passe</label>
+                    <input id="mdp" class="form-control" type="text" name="mdp" required>
+                </div>
+                <button class="btn btn-success" id="loginBtn">Connecter</button>
+            </p>
+        </div>
+        <div class="card-footer">
+            Besoin d'aide ? Consultez le manuel d'utilisation
         </div>
     </div>
 
-    <script src="adapter-latest.js"></script>
     <script src="./socket.io/socket.io.js"></script>
-    <script src="main.js"></script>
+    <script src="login.js"></script>
 </body>
 
 </html>

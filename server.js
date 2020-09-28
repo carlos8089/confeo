@@ -5,7 +5,12 @@ const https = require('https');
 const pem = require('pem');
 const path = require('path');
 const express = require('express');
+const mysql = require('mysql');
 let io;
+let sql;
+let nomdutilisateur;
+let activeUsers = [];
+
 
 pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
     var options = {
@@ -27,59 +32,100 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
     function handleRoutes() {
         app.use(express.static(path.join(__dirname, "/public")));
 
-        app.get('/bootstrap.css', function(req, res) {
-            //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
-            res.sendFile(__dirname + '/public/css/bootstrap/bootstrap.css')
+        app.get('/app.html', function(req, res) {
+            res.sendFile(__dirname + '/public/app.html');
+        })
 
+        app.get('/bootstrap.css', function(req, res) {
+            res.sendFile(__dirname + '/public/css/bootstrap/bootstrap.css')
         })
 
         app.get('/styles.css', function(req, res) {
-            //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
             res.sendFile(__dirname + '/public/css/styles.css')
+        })
 
+        app.get('/login.js', function(req, res) {
+            res.sendFile(__dirname + '/public/scripts/login.js')
         })
 
         app.get('/main.js', function(req, res) {
-            //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
             res.sendFile(__dirname + '/public/scripts/main.js')
-
         })
 
         app.get('/adapter-latest.js', function(req, res) {
-            //arrivé sur le repetoire racine du serveur, retourne le fichier index.html
             res.sendFile(__dirname + '/public/scripts/adapter-latest.js')
-
         })
     }
 
     function handleSocketConnection() {
-        var activeSockets = [];
         io.on("connection", socket => {
-            //console.log('new connected user :' + socket.id)
-            const existingSocket = activeSockets.find(
+            console.log("active users : " + activeUsers)
+            const existingSocket = activeUsers.find(
                 existingSocket => existingSocket === socket.id
             );
 
-            if (!existingSocket) {
-                activeSockets.push(socket.id);
-
-                socket.emit("update-user-list", {
-                    users: activeSockets.filter(
-                        existingSocket => existingSocket !== socket.id
-                    )
-                });
-
-                socket.broadcast.emit("update-user-list", {
-                    users: [socket.id]
-                });
-            }
-
-            socket.to(socket.id).emit("your-id", {
-                user: socket.id
+            socket.emit("update-user-list", {
+                users: activeUsers.filter(
+                    existingSocket => existingSocket !== socket.id
+                )
             });
+
+            socket.broadcast.emit("update-user-list", {
+                users: [socket.id]
+            });
+
             //general events handling
+            socket.on("login", data => {
+                let state;
+                var con = mysql.createConnection({
+                    host: "localhost",
+                    user: "spartan",
+                    password: "spartan8089",
+                    database: "confeo"
+                });
+
+                con.connect(function(err) {
+                    if (err) throw err;
+                    console.log("Connected to database!");
+                    let username = data.username;
+                    let password = data.password;
+                    sql = "SELECT * FROM users WHERE uname=" + mysql.escape(username) + "and mdp=" + mysql.escape(password);
+                    con.query(sql, function(err, result) {
+                        if (err) throw err;
+                        let data = JSON.parse(JSON.stringify(result));
+                        let count = data.length;
+                        //console.log(count);
+                        if (count === 1) {
+                            state = true;
+                            console.log("profile matched");
+                            nomdutilisateur = username;
+                            socket.emit("your-username", {
+                                username: nomdutilisateur
+                            });
+                        } else {
+                            state = false;
+                            console.log("profile unmatched");
+                        }
+                        socket.emit("logging-control", {
+                            state: state,
+                            to: data.socket
+                        });
+                    });
+                });
+                //console.log(data.socketId);
+            });
+            socket.on("login-success", () => {
+
+                if (!existingSocket) {
+                    activeUsers.push(socket.id);
+                    console.log(activeUsers)
+                    socket.broadcast.emit("update-user-list", {
+                        users: [socket.id]
+                    });
+                }
+            })
             socket.on("disconnect", () => {
-                activeSockets = activeSockets.filter(
+                activeUsers = activeUsers.filter(
                     existingSocket => existingSocket !== socket.id
                 );
                 socket.broadcast.emit("remove-user", {

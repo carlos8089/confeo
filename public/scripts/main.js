@@ -1,12 +1,16 @@
+let username;
+const callButton = document.getElementById('callButton');
+const msgZone = document.getElementById('message-zone');
 const messages = document.getElementById('messages');
+const msgSendZone = document.getElementById('send-message');
 const msg = document.getElementById('msg');
 const msgButton = document.getElementById('msgButton');
-const msgZone = document.getElementById('msg-zone');
 const diffusion = document.getElementById('diffusion');
 const diff = document.getElementById('diff');
 const screen = document.getElementById('screen-share');
 const start = document.getElementById('start');
 const action = document.getElementById('action-zone');
+const video = document.getElementById('video-chat-zone');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const constraints = {
@@ -31,7 +35,6 @@ const connection = {
 let peerConnection = new RTCPeerConnection(iceConfig);
 let isConnectedToSocket = false; //indique si la pair local est connected à la pair distante
 let isDataChannel = false; //indique que la Datachannel est crée
-let mySocketId; //indique le socket id du client
 let connectToSocket; //indique le socket auquel on veut se connecter
 let connectedToSocket; //indique le socket auquel on est connecté
 let dataChannel;
@@ -42,6 +45,7 @@ let offer;
 let answer;
 let stream;
 let mediaSource = 'user';
+let us;
 
 //operations
 function sendData() {
@@ -66,7 +70,6 @@ async function gotStream() {
         for (const track of stream.getTracks()) {
             peerConnection.addTrack(track, stream);
         };
-        localVideo.hidden = false;
         localVideo.srcObject = stream;
         localVideo.play();
     } catch (error) {
@@ -109,21 +112,14 @@ async function ecrire(socketId) {
 }
 async function call(socketId) {
     //recuperer le flux
-    //gotStream(mediaSource);
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    console.log('Accès au flux media');
-    for (const track of stream.getTracks()) {
-        peerConnection.addTrack(track, stream);
-    };
-    localVideo.hidden = false;
-    localVideo.srcObject = stream;
-    localStream = stream;
-    remoteVideo.hidden = false;
-
+    gotStream();
     //send candidate to other peer
     peerConnection.addEventListener('icecandidate', e => onIceCandidate(peerConnection, socketId, e));
     peerConnection.addEventListener('iceconnectionstatechange', e => onIceStateChange(peerConnection, e));
 
+    msgZone.removeAttribute('class', 'message-flow');
+    msgZone.setAttribute('class', 'message-flow-call');
+    video.hidden = false;
     // create offer, set local description and offer
     offer = await peerConnection.createOffer(offerOptions)
     await onCreateOfferSuccess(offer)
@@ -137,10 +133,11 @@ async function connecter(socketId) {
     diff.hidden = true;
     const talkingWithInfo = document.getElementById("talking-with-info");
     talkingWithInfo.innerHTML = `Vous êtes connecté avec ${socketId}"`;
-    action.hidden = false
-        //afficher les appels à action
-    msgZone.hidden = false
-        //indiquer le socket auquel l'utilisateur se connecte
+    //afficher les appels à action
+    action.hidden = false;
+    msgSendZone.hidden = false;
+    msgZone.hidden = false;
+    //indiquer le socket auquel l'utilisateur se connecte
     connectToSocket = socketId;
 
 }
@@ -163,11 +160,9 @@ msg.addEventListener('click', function() {
     ecrire(connectToSocket);
 })
 screen.addEventListener("click", function() {
-    /*
     mediaSource = 'screen';
-    call(connectToSocket, mediaSource);
+    call(connectToSocket);
     callButton.innerHTML = 'Revenir à la caméra';
-    */
 })
 callButton.addEventListener("click", function() {
     call(connectToSocket);
@@ -198,6 +193,9 @@ peerConnection.addEventListener('datachannel', event => {
 //handling socket event
 const socket = io();
 //diffusion events
+socket.on("your-username", data => {
+    username = data.username;
+});
 socket.on("new-diffusion-candidate", async data => {
     console.log("new diffusion candidate received")
     try {
@@ -263,14 +261,14 @@ socket.on("offer-made", async data => {
     } catch (error) {
         handleError(error)
     }
-    /*
+
     //emettre aussi un appel
     try {
         call(data.socket)
     } catch (error) {
         handleError(error)
     }
-    */
+
 });
 socket.on("answer-made", async data => {
     console.log('local peer setRemoteDescription start');
@@ -343,15 +341,14 @@ socket.on("dc-answer-made", async data => {
     }
 });
 //general events handling
-socket.on("your-id"), data => {
-    mySocketId = data.user;
-}
+
 socket.on("update-user-list", ({ users }) => {
+    us = users;
+    console.log("utilisateurs : " + us);
     updateUserList(users);
 });
 socket.on("remove-user", ({ socketId }) => {
     const elToRemove = document.getElementById(socketId);
-
     if (elToRemove) {
         elToRemove.remove();
     }
@@ -368,13 +365,14 @@ function unselectUsersFromList() {
     });
 };
 
-function updateUserList(socketIds) {
+function updateUserList(users) {
     const activeUserContainer = document.getElementById("active-user-container");
 
-    socketIds.forEach(socketId => {
-        const alreadyExistingUser = document.getElementById(socketId);
+    users.forEach(user => {
+        const alreadyExistingUser = document.getElementById(user);
+        console.log(!alreadyExistingUser);
         if (!alreadyExistingUser) {
-            const userContainerEl = createUserItemContainer(socketId);
+            const userContainerEl = createUserItemContainer(user);
             activeUserContainer.appendChild(userContainerEl);
         }
     });
@@ -389,6 +387,7 @@ function createUserItemContainer(socketId) {
     userContainerEl.setAttribute("id", socketId);
     usernameEl.setAttribute("class", "username");
     usernameEl.innerHTML = `${socketId}`;
+    //usernameEl.innerHTML = username;
 
     userContainerEl.appendChild(usernameEl);
 
@@ -509,7 +508,7 @@ function onReceiveMessageCallback(event) {
     console.log('Received Message');
     connecter(connectedToSocket);
     afficheMessage(connectedToSocket, event.data);
-    msg.disabled = false;
+    //msg.disabled = false;
     msg.focus();
     msgButton.disabled = false;
     /*
