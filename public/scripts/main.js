@@ -1,10 +1,15 @@
 let username;
-const callButton = document.getElementById('callButton');
+const app = document.getElementById('main');
+const callButton = document.getElementById('call-button');
+const videoCallButton = document.getElementById('video-call-button');
 const msgZone = document.getElementById('message-zone');
 const messages = document.getElementById('messages');
 const msgSendZone = document.getElementById('send-message');
 const msg = document.getElementById('msg');
+const fileButton = document.getElementById('file-input');
+const inputf = document.getElementById('inputf');
 const msgButton = document.getElementById('msgButton');
+const accueil = document.getElementById('accueil');
 const diffusion = document.getElementById('diffusion');
 const diff = document.getElementById('diff');
 const screen = document.getElementById('screen-share');
@@ -13,10 +18,10 @@ const action = document.getElementById('action-zone');
 const video = document.getElementById('video-chat-zone');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
-const constraints = {
-    audio: true,
-    video: true
-}
+var constraints = {
+    audio: 0,
+    video: 1
+};
 const offerOptions = {
     offerToReceiveAudio: 1,
     offerToReceiveVideo: 1
@@ -35,9 +40,11 @@ const connection = {
 let peerConnection = new RTCPeerConnection(iceConfig);
 let isConnectedToSocket = false; //indique si la pair local est connected à la pair distante
 let isDataChannel = false; //indique que la Datachannel est crée
+let mySocketId;
 let connectToSocket; //indique le socket auquel on veut se connecter
 let connectedToSocket; //indique le socket auquel on est connecté
 let dataChannel;
+let dataType = 'text';
 let receivedChannel;
 let messageNumber = 0;
 let readyState;
@@ -47,13 +54,78 @@ let stream;
 let mediaSource = 'user';
 let us;
 
+//Connexion à l'application
+const loginForm = document.getElementById('login-form');
+var loginBtn = document.getElementById('loginBtn');
+var valid = false;
+
+loginBtn.addEventListener('click', function() {
+    var identifier = document.getElementById('identifier').value;
+    var mdp = document.getElementById('mdp').value;
+
+    socket.emit("login", {
+        username: identifier,
+        password: mdp,
+        socketId: socket.id
+    });
+});
+
+//Application
 //operations
-function sendData() {
-    const data = msg.value;
-    dataChannel.send(data);
-    afficheMessage(mySocketId, data);
-    console.log('Sent Data: ' + data);
-    msg.value = ''
+function sendData(type) {
+    switch (type) {
+        case 'text':
+            const data = msg.value;
+            dataChannel.send(data);
+            afficheMessage(mySocketId, data);
+            console.log('Sent Data: ' + data);
+            msg.value = '';
+            break;
+
+        case 'file':
+            const file = inputf.files[0];
+            console.log(`File is ${[file.name, file.size, file.type, file.lastModified].join(' ')}`);
+
+            // Handle 0 size files.
+
+            /*
+            statusMessage.textContent = '';
+            downloadAnchor.textContent = '';
+            */
+            if (file.size === 0) {
+                bitrateDiv.innerHTML = '';
+                statusMessage.textContent = 'File is empty, please select a non-empty file';
+                closeDataChannels();
+                return;
+            }
+            const chunkSize = 16384;
+            fileReader = new FileReader();
+            let offset = 0;
+            fileReader.addEventListener('error', error => console.error('Error reading file:', error));
+            fileReader.addEventListener('abort', event => console.log('File reading aborted:', event));
+            fileReader.addEventListener('load', e => {
+                console.log('FileRead.onload ', e);
+                dataChannel.send(e.target.result);
+                afficheFichier(mySocketId, file);
+                offset += e.target.result.byteLength;
+                sendProgress.value = offset;
+                if (offset < file.size) {
+                    readSlice(offset);
+                }
+            });
+            const readSlice = o => {
+                console.log('readSlice ', o);
+                const slice = file.slice(offset, o + chunkSize);
+                fileReader.readAsArrayBuffer(slice);
+            };
+            readSlice(0);
+            console.log('Sent Data: ' + file);
+            msg.value = '';
+
+            break;
+        default:
+            break;
+    }
 }
 
 async function gotStream() {
@@ -128,11 +200,34 @@ async function call(socketId) {
         to: socketId
     });
 }
+async function audioCall(socketId) {
+    constraints = {
+        audio: 1,
+        video: 0
+    };
+    //recuperer le flux
+    gotStream();
+    //send candidate to other peer
+    peerConnection.addEventListener('icecandidate', e => onIceCandidate(peerConnection, socketId, e));
+    peerConnection.addEventListener('iceconnectionstatechange', e => onIceStateChange(peerConnection, e));
+
+    msgZone.removeAttribute('class', 'message-flow');
+    msgZone.setAttribute('class', 'message-flow-call');
+    video.hidden = false;
+    // create offer, set local description and offer
+    offer = await peerConnection.createOffer(offerOptions)
+    await onCreateOfferSuccess(offer)
+    socket.emit("make-audio-offer", {
+        offer,
+        to: socketId
+    });
+}
 
 async function connecter(socketId) {
-    diff.hidden = true;
+    header.hidden = false;
+    accueil.hidden = true;
     const talkingWithInfo = document.getElementById("talking-with-info");
-    talkingWithInfo.innerHTML = `Vous êtes connecté avec ${socketId}"`;
+    talkingWithInfo.innerHTML = `${socketId}`;
     //afficher les appels à action
     action.hidden = false;
     msgSendZone.hidden = false;
@@ -152,23 +247,36 @@ async function diffuser() {
     await onCreateOfferSuccess(offer)
     socket.emit("make-diffusion-offer", { offer });
 }
-start.addEventListener('click', function() {
-    //ecrire(connectToSocket)
-    alert("Bonjour !");
-});
 msg.addEventListener('click', function() {
+    dataType = 'text';
     ecrire(connectToSocket);
 })
+fileButton.addEventListener('click', function() {
+    dataType = 'file';
+    inputf.click();
+});
+inputf.addEventListener('change', handleFileInputChange, false);
 screen.addEventListener("click", function() {
+    constraints = {
+        audio: 1,
+        video: 1,
+    }
     mediaSource = 'screen';
     call(connectToSocket);
     callButton.innerHTML = 'Revenir à la caméra';
 })
 callButton.addEventListener("click", function() {
-    call(connectToSocket);
+    audioCall(connectToSocket);
 });
+videoCallButton.addEventListener("click", function() {
+    constraints = {
+        audio: 1,
+        video: 1
+    };
+    call(connectToSocket);
+})
 msgButton.addEventListener("click", function() {
-    sendData()
+    sendData(dataType);
 })
 diffusion.addEventListener("click", function() {
     diffuser()
@@ -192,10 +300,17 @@ peerConnection.addEventListener('datachannel', event => {
 
 //handling socket event
 const socket = io();
-//diffusion events
-socket.on("your-username", data => {
-    username = data.username;
+//login events
+socket.on("logging-control", data => {
+    valid = data.state;
+    authentify(valid);
 });
+socket.on("your-id", data => {
+    console.log(data.user)
+    mySocketId = data.socketId;
+
+});
+//diffusion events
 socket.on("new-diffusion-candidate", async data => {
     console.log("new diffusion candidate received")
     try {
@@ -206,6 +321,7 @@ socket.on("new-diffusion-candidate", async data => {
     }
 });
 socket.on("diffusion-offer-made", async data => {
+    accueil.hidden = true;
     console.log("diffusion offer received")
     remoteVideo.hidden = false
     diff.hidden = true
@@ -242,10 +358,14 @@ socket.on("new-candidate", async data => {
     }
 });
 socket.on("offer-made", async data => {
+    accueil.hidden = true;
+    header.hidden = false;
+    msgZone.hidden = false;
+    action.hidden = false;
+    msgSendZone.hidden = false;
     console.log("call offer received")
     connectedToSocket = data.socket;
-    remoteVideo.hidden = false
-    localVideo.hidden = false
+    video.hidden = false;
     console.log("setRemoteDescription start")
     await peerConnection.setRemoteDescription(data.offer);
     await onSetRemoteSuccess(peerConnection);
@@ -279,6 +399,58 @@ socket.on("answer-made", async data => {
         onSetSessionDescriptionError(e);
     }
 });
+//audio call events
+socket.on("new-audio-candidate", async data => {
+    console.log("new candidate received")
+    try {
+        peerConnection.addIceCandidate(data.candidate)
+        peerConnection.addEventListener('iceconnectionstatechange', e => onIceStateChange(peerConnection, e))
+    } catch (error) {
+        handleError(error)
+    }
+});
+socket.on("audio-offer-made", async data => {
+    accueil.hidden = true;
+    header.hidden = false;
+    msgZone.hidden = false;
+    action.hidden = false;
+    msgSendZone.hidden = false;
+    console.log("audio call offer received")
+    connectedToSocket = data.socket;
+    video.hidden = false;
+    console.log("setRemoteDescription start")
+    await peerConnection.setRemoteDescription(data.offer);
+    await onSetRemoteSuccess(peerConnection);
+    //create and send answer
+    try {
+        console.log("peer createAnswer start")
+        answer = await peerConnection.createAnswer()
+        await onCreateAnswerSuccess(answer)
+        socket.emit("make-audio-answer", {
+            answer,
+            to: connectedToSocket
+        });
+    } catch (error) {
+        handleError(error)
+    }
+
+    //emettre aussi un appel
+    try {
+        audioCall(data.socket)
+    } catch (error) {
+        handleError(error);
+    }
+});
+socket.on("audio-answer-made", async data => {
+    console.log('local peer setRemoteDescription start');
+    try {
+        await peerConnection.setRemoteDescription(data.answer);
+        onSetRemoteSuccess(peerConnection);
+    } catch (e) {
+        onSetSessionDescriptionError(e);
+    }
+});
+
 //data channel events
 socket.on("new-dc-candidate", async data => {
     console.log("new data channel candidate received");
@@ -290,6 +462,7 @@ socket.on("new-dc-candidate", async data => {
     }
 });
 socket.on("dc-offer-made", async data => {
+
     console.log("datachannel offer received");
     connectedToSocket = data.socket;
     console.log("setRemoteDescription start")
@@ -341,7 +514,9 @@ socket.on("dc-answer-made", async data => {
     }
 });
 //general events handling
-
+socket.on("your-username", data => {
+    username = data.username;
+});
 socket.on("update-user-list", ({ users }) => {
     us = users;
     console.log("utilisateurs : " + us);
@@ -355,6 +530,19 @@ socket.on("remove-user", ({ socketId }) => {
 });
 
 //methods definitions
+function authentify(state) {
+    if (state == true) {
+        console.log('authentification réussie');
+        socket.emit("login-success");
+        loginForm.hidden = true;
+        app.hidden = false;
+    } else {
+        console.log('echec d\'authentification utilisateur');
+        debugger
+        //window.location.reload();
+    }
+}
+
 function unselectUsersFromList() {
     const alreadySelectedUser = document.querySelectorAll(
         ".active-user.active-user--selected"
@@ -507,7 +695,17 @@ function onSendChannelStateChange() {
 function onReceiveMessageCallback(event) {
     console.log('Received Message');
     connecter(connectedToSocket);
-    afficheMessage(connectedToSocket, event.data);
+    switch (dataType) {
+        case 'text':
+            afficheMessage(connectedToSocket, event.data);
+            break;
+
+        case 'file':
+            afficheFichier(connectedToSocket, event.data);
+        default:
+            break;
+    }
+
     //msg.disabled = false;
     msg.focus();
     msgButton.disabled = false;
@@ -537,21 +735,75 @@ function afficheMessage(socketId, data) {
     messageNumber += 1;
     newMsg = document.createElement('div');
     newMsg.setAttribute("id", messageNumber);
-    newMsg.setAttribute("class", "panel");
-    sender = document.createElement('p');
+    newMsg.setAttribute("class", "newMsg");
+    sender = document.createElement('span');
     sender.setAttribute("class", "message-sender");
+    content = document.createElement('span');
+    content.innerHTML = data;
     if (socketId === mySocketId) {
         sender.innerHTML = 'Vous';
+        newMsg.setAttribute("class", "_2hq0q newMsg localMsg");
+        content.setAttribute("class", "local-message-content");
     } else {
         sender.innerHTML = socketId;
+        newMsg.setAttribute("class", "_2hq0q newMsg remoteMsg")
+        content.setAttribute("class", "remote-message-content");
     }
-    content = document.createElement('p');
-    content.setAttribute("class", "message-content");
-    content.innerHTML = data;
     newMsg.appendChild(sender);
     newMsg.appendChild(content);
     messages.appendChild(newMsg);
     document.getElementById(messageNumber).focus({ preventScroll: false });
+}
+
+function afficheFichier(socketId, data) {
+    msgZone.hidden = false;
+    messageNumber += 1;
+    newMsg = document.createElement('div');
+    newMsg.setAttribute("id", messageNumber);
+    newMsg.setAttribute("class", "newMsg");
+    sender = document.createElement('span');
+    sender.setAttribute("class", "message-sender");
+    fileName = document.createElement('span');
+    fileName.innerHTML = data.name;
+
+    if (socketId === mySocketId) {
+        sender.innerHTML = 'Vous';
+        newMsg.setAttribute("class", "_2hq0q newMsg localMsg");
+        fileName.setAttribute("class", "local-message-content");
+        sendProgress = document.createElement('progress');
+        sendProgress.setAttribute('id', 'send-progress');
+        sendProgress.setAttribute('max', '0');
+        sendProgress.setAttribute('value', '0');
+        sendProgress.max = data.size;
+    } else {
+        sender.innerHTML = socketId;
+        newMsg.setAttribute("class", "_2hq0q newMsg remoteMsg")
+        fileName.setAttribute("class", "remote-message-content");
+        receiveProgress = document.createElement('progress');
+        receiveProgress.setAttribute('id', 'send-progress');
+        receiveProgress.setAttribute('max', '0');
+        receiveProgress.setAttribute('value', '0');
+        receiveProgress.max = data.size;
+    }
+    newMsg.appendChild(sender);
+    newMsg.appendChild(fileName);
+    messages.appendChild(newMsg);
+    document.getElementById(messageNumber).focus({ preventScroll: false });
+}
+
+function preview(data) {
+    selectedFile = data;
+    msg.value = selectedFile.name;
+}
+async function handleFileInputChange() {
+    const file = inputf.files[0];
+    if (!file) {
+        console.log('Erreur, aucun fichier n\'a été choisi');
+    } else {
+        preview(file);
+        msgButton.disabled = false;
+        msgButton.focus();
+    }
 }
 //call methods methods
 async function onIceCandidate(pc, socketId, event) {

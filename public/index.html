@@ -2,11 +2,14 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Confeo</title>
+    <link rel="stylesheet" href="all.css">
     <link rel="stylesheet" href="styles.css" type="text/css">
+    <link rel="stylesheet" href="login.css" type="text/css">
     <link rel="stylesheet" href="bootstrap.css">
-    <title>Confeo | Login</title>
     <style>
         * {
             margin: 0;
@@ -16,32 +19,134 @@
 </head>
 
 <body>
-    <div class="card py-8">
-        <div class="card-header">
-            Bienvenue
-        </div>
-        <div class="card-body">
-            <h4 class="card-title">Veuillez vos informations de connexion</h4>
-            <p class="card-text">
+    <!-- Login -->
+    <div id="login-form">
+        <div class="login-container">
+            <div class="login-brand">
+                <span>Bienvenue</span>
+            </div>
+            <div class="login-content">
 
-                <div class="form-group">
-                    <label for="identifier">Identifiant</label>
-                    <input id="identifier" class="form-control" type="text" name="identifier" required>
-                </div>
-                <div class="form-group">
-                    <label for="mdp">Mot de passe</label>
-                    <input id="mdp" class="form-control" type="text" name="mdp" required>
-                </div>
+                <label for="identifier">Identifiant</label>
+                <input id="identifier" class="login-input" type="text" name="identifier" required>
+
+
+                <label for="mdp">Mot de passe</label>
+                <input id="mdp" class="login-input" type="password" name="mdp" required>
+
                 <button class="btn btn-success" id="loginBtn">Connecter</button>
-            </p>
-        </div>
-        <div class="card-footer">
-            Besoin d'aide ? Consultez le manuel d'utilisation
+            </div>
+            <div class="login-footer">
+
+            </div>
+
         </div>
     </div>
 
+    <!-- Main app -->
+    <div id="main">
+        <div class="sidebar">
+            <div>
+                <nav class="nav navbar-default bg-primary">
+                    <div class="navbar-header">
+                        <a class="navbar-brand" href="https://192.168.43.91:5000">
+                            <strong>CONFEO</strong>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+            <div id="users-zone">
+                <div class="active-users-panel" id="active-user-container">
+                    <div class="users-container-brand">
+                        <span class="panel-titre">Utilisateurs actifs</span>
+                        <h6>(Cliquez pour appeler)</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="content" id="chat-zone">
+            <header id="header" hidden>
+                <div class="sup">
+
+                    <div class="sup-brand">
+                        <strong><span id="talking-with-info"></span></strong>
+                    </div>
+
+
+                    <div class="sup-nav" id="action-zone" hidden>
+                        <div role="button" id="call-button" class="sup-action">
+                            <i>
+                                <svg class="bi" width="32" height="32" fill="currentColor">
+                                    <use xlink:href="bootstrap-icons/bootstrap-icons.svg#telephone-fill"/>
+                                  </svg>
+                            </i>
+                        </div>
+                        <div role="button" id="video-call-button" class="sup-action">
+                            <i>
+                                    <svg class="bi" width="32" height="32" fill="currentColor">
+                                        <use xlink:href="bootstrap-icons/bootstrap-icons.svg#camera-video-fill"/>
+                                      </svg>
+                                </i>
+                        </div>
+                        <div role="button" id="screen-share" class="sup-action">
+                            <i>
+                                    <svg class="bi" width="32" height="32" fill="currentColor">
+                                        <use xlink:href="bootstrap-icons/bootstrap-icons.svg#display"/>
+                                      </svg>
+                                </i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <section>
+                <div class="video-container" id="video-chat-zone" hidden>
+                    <video autoplay class="remote-video surbox" id="remote-video"></video>
+                    <video autoplay muted class="local-video surbox" id="local-video"></video>
+                </div>
+                <div class="message-flow" id="message-zone">
+                    <div id="messages" class="z_tTQ">
+                    </div>
+                </div>
+                <div id="accueil">
+                    <div class="home-info">
+                        <p>Bienvenue !
+                            <br> Pour démarrer une nouvelle conversation veuillez sélectionner un interlocuteur parmi la liste des utilisateurs dans le menu à gauche.
+                        </p>
+                    </div>
+                    <div id="diff">
+                        <button id="diffusion" class="btn btn-warning">Démarrer une diffusion</button>
+                    </div>
+                </div>
+            </section>
+            <footer>
+                <div class="message-send" id="send-message" hidden>
+                    <div class="message">
+                        <div class="text-input">
+                            <input type="text" placeholder="Votre message..." class="_3uMse" id="msg">
+                        </div>
+                        <div id="file-input" role="button" data-animated-icon-item="true" style="opacity: 1; transform: translateY(0%); scale: 1 1;">
+                            <span data-icon="attach-document">
+                                <i>
+                                    <svg class="bi" width="20" height="20" fill="currentColor">
+                                        <use xlink:href="bootstrap-icons/bootstrap-icons.svg#paperclip"/>
+                                    </svg>
+                                </i> 
+                            </span>
+                            <input accept="*" multiple="" type="file" style="display:none;" id="inputf">
+                        </div>
+                    </div>
+                    <div class="send-button" role="button">
+                        <button class="btn-send" id="msgButton" disabled>
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <script src="adapter-latest.js"></script>
     <script src="./socket.io/socket.io.js"></script>
-    <script src="login.js"></script>
+    <script src="main.js"></script>
 </body>
 
 </html>

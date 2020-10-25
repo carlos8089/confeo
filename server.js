@@ -1,5 +1,4 @@
 'use strict';
-
 const app = require('express')();
 const https = require('https');
 const pem = require('pem');
@@ -11,15 +10,11 @@ let sql;
 let nomdutilisateur;
 let activeUsers = [];
 
-
 pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
     var options = {
         key: keys.serviceKey,
         cert: keys.certificate
     };
-
-    // Create an HTTPS service.
-    //https.createServer(options, app).listen(8080);
     const httpsServer = https.createServer(options, app);
     io = require('socket.io')(httpsServer);
     httpsServer.listen(5000);
@@ -31,30 +26,24 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
 
     function handleRoutes() {
         app.use(express.static(path.join(__dirname, "/public")));
-
-        app.get('/app.html', function(req, res) {
-            res.sendFile(__dirname + '/public/app.html');
-        })
-
+        app.get('/all.css', function(req, res) {
+            res.sendFile(__dirname + '/public/fa/css/all.css')
+        });
         app.get('/bootstrap.css', function(req, res) {
             res.sendFile(__dirname + '/public/css/bootstrap/bootstrap.css')
-        })
-
+        });
         app.get('/styles.css', function(req, res) {
             res.sendFile(__dirname + '/public/css/styles.css')
-        })
-
-        app.get('/login.js', function(req, res) {
-            res.sendFile(__dirname + '/public/scripts/login.js')
-        })
-
+        });
+        app.get('/login.css', function(req, res) {
+            res.sendFile(__dirname + '/public/css/login.css')
+        });
         app.get('/main.js', function(req, res) {
             res.sendFile(__dirname + '/public/scripts/main.js')
-        })
-
+        });
         app.get('/adapter-latest.js', function(req, res) {
             res.sendFile(__dirname + '/public/scripts/adapter-latest.js')
-        })
+        });
     }
 
     function handleSocketConnection() {
@@ -73,7 +62,9 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
             socket.broadcast.emit("update-user-list", {
                 users: [socket.id]
             });
-
+            socket.emit("your-id", {
+                socketId: socket.id
+            });
             //general events handling
             socket.on("login", data => {
                 let state;
@@ -160,6 +151,25 @@ pem.createCertificate({ days: 1, selfSigned: true }, function(err, keys) {
             });
             socket.on("make-answer", data => {
                 socket.to(data.to).emit("answer-made", {
+                    socket: socket.id,
+                    answer: data.answer
+                })
+            });
+            //audio call events
+            socket.on("send-audio-candidate", data => {
+                socket.to(data.to).emit("new-audio-candidate", {
+                    candidate: data.candidate,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-audio-offer", data => {
+                socket.to(data.to).emit("audio-offer-made", {
+                    offer: data.offer,
+                    socket: socket.id
+                });
+            });
+            socket.on("make-audio-answer", data => {
+                socket.to(data.to).emit("audio-answer-made", {
                     socket: socket.id,
                     answer: data.answer
                 })

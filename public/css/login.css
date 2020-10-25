@@ -1,0 +1,68 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Selima", Montserrat, Verdana, Lato, sans-serif sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f9fafc;
+    color: #595354;
+    overflow: hidden;
+}
+
+.login-container {
+    margin: 7% 25% 25%;
+    padding: 20px;
+    background-color: cornflowerblue;
+    border-radius: 10px;
+}
+
+.login-brand {
+    font-size: 3.5em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    color: white;
+}
+
+.login-content {
+    margin: 20px;
+}
+
+label {
+    color: white;
+}
+
+.login-input {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    border-radius: 6px;
+}
+
+#loginBtn {
+    width: 100%;
+    margin-top: 30px;
+    font-size: large;
+    font-weight: bold;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-align: center;
+    vertical-align: middle;
+    background-color: chocolate;
+    color: #fff;
+}
+
+.login-footer {}
+
+@media screen and (max-width: 400px) {
+    .login-container {
+        margin: 35% 5% 5%;
+        padding: 10px;
+        background-color: cornflowerblue;
+        border-radius: 10px;
+    }
+}
